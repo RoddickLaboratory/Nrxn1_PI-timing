@@ -19,7 +19,6 @@ Run the `code/render.R` script to render the Rmarkdown file `PI_timing.Rmd` into
 .gitignore - File listing the files and directories to ignore when using git for version control.
 .renvignore - File listing the files and directories to ignore when using the renv package for R package management.
 .Rprofile - R profile file that sets the default options for the R session.
-.Rproj.user/ - Directory containing the R project user settings.
 code/ - Directory containing code for the analysis of the data.
   Activity.R - R script with code to analyze the activity of the mice. Outputs the PI_timing_poke_state.RDS file used by the Rmarkdown file.
   getStartStop.m - MATLAB script with code to determine the start and stop times for the single trial analysis.
@@ -39,7 +38,5 @@ Nrxn1_PI-timing.Rproj - The R project file containing the settings for the R pro
 renv/ - Directory containing the R environment settings for the project.
   .gitignore - File listing the files and directories to ignore when using git for version control.
   activate.R - R script that activates the renv environment when run.
-  library/ - Directory containing the R packages used in the project.
   settings.json - File containing the settings for the renv package.
-  staging/ - Directory containing the more R packages used in the project that are not installed in the library directory.
 renv.lock - File containing the R package dependencies for the project, used by the renv package to restore the environment.
