@@ -1,0 +1,1179 @@
+# Interval Timing is altered in male Nrxn1+/- mice: A Model of Autism Spectrum Disorder
+
+
+```{r setup_PI, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(dpi = 600)
+
+library(here)
+library(knitr)
+library(gridExtra)
+library(broom)
+library(rstatix)
+library(ggsignif)
+library(janitor)
+library(tidyverse)
+library(statsreportr)
+
+wt_name <- "Nrxn1^+/+^"
+tg_name <- "Nrxn1^+/-^"
+rescue_name <- "Nrxn1^ΔS5/-^"
+
+plot_labels <- c("Nrxn1<sup>+/+</sup>", 
+                 "Nrxn1<sup>+/-</sup>",
+                 "Nrxn1<sup>\u0394S5/-</sup>")
+
+# Set the colour vector for the genotypes used in plots
+colour_vector <- c("#808080", "#0033FF", "#812A87") |> 
+  setNames(c(wt_name, tg_name, rescue_name))
+
+# Set the figure DPI for saving
+figure_dpi <- 900
+
+fix_names <- function(x) {
+  case_when(x == "Nrxn1^+/+^" ~ wt_name,
+            x == "Nrxn1^+/" ~ tg_name,
+            x %in% c("Nrxn1^ΔS5/", "^") ~ rescue_name)
+}
+
+pc_tests <- function(data, var, p.adjust.method = "none") {
+  var <- rlang::englue("{{ var }}")
+  
+  data |>
+    emmeans_test(formula = as.formula(paste0(var, " ~ genotype")),
+                 comparisons = list(
+                   c(wt_name, tg_name),
+                   c(tg_name, rescue_name)),
+                 p.adjust.method = p.adjust.method) |>
+    mutate(across(group1:group2, fix_names))
+}
+
+pc_sig_markers <- function(pc_test, 
+                           y_position = 45, 
+                           textsize = sig_size / 2, 
+                           vjust = .6) {
+  if(nrow(pc_test |> remove_ns()) > 0) {
+    return(geom_signif(comparisons = pc_test |>
+                         remove_ns() |>
+                         rowwise() |>
+                         mutate(.keep = "none", 
+                                comps = list(c(group1, group2))) |>
+                         pull(comps),
+                       annotations = pc_test |>
+                         remove_ns() |>
+                         pull(p.adj.signif),
+                       # tip_length = 0,
+                       y_position = y_position,
+                       textsize = textsize,
+                       vjust = vjust))
+  } else {
+    return(NULL)
+  } 
+}
+```
+
+```{r load_data_PI}
+
+dat_no_tail <- read_csv(here("data","longDataNoTail.csv")) |> 
+  remove_empty("cols")
+
+geno <- read_csv(here("data", "genotypes.csv"))
+
+dat_PI_timing <- dat_no_tail |>
+  mutate(block = ((session - 1) %/% 5) + 1) |>
+  left_join(geno,
+            by = c("subject" = "mouse")) |>
+  filter(!old)
+
+dat_PI_timing <- dat_PI_timing |> 
+  filter(genotype %in% c("wt", "tg", "ds5/-")) |> 
+  mutate(genotype = case_when(
+    genotype == "wt" ~ wt_name,
+    genotype == "tg" ~ tg_name,
+    genotype == "ds5/-" ~ rescue_name),
+    genotype = as.factor(genotype),
+    genotype = fct_relevel(genotype, wt_name, tg_name))
+```
+
+## Mouse Numbers
+
+```{r count_mice_PI}
+mouse_count <- dat_PI_timing |> 
+  group_by(genotype) |> 
+  count(subject) |> 
+  group_by(genotype) |> 
+  count()
+```
+
+There are `r mouse_count$n[mouse_count$genotype == wt_name]` `r wt_name` mice, `r mouse_count$n[mouse_count$genotype == tg_name]` `r tg_name` mice, and `r mouse_count$n[mouse_count$genotype == rescue_name]` `r rescue_name` mice in the peak interval analysis.
+All mice were males and started testing at 2 months of age.
+
+## Well Timed Trials
+
+```{r well_timed}
+wt.dat <- dat_PI_timing |>
+  group_by(subject, session, trial, block, genotype) |>
+  summarise(aCrit = sum(responseRate) > 5,
+            bCrit = mean(outputStart) <= 15,
+            cCrit = mean(outputStop) >= 15,
+            dCrit = (mean(outputStop) - mean(outputStart)) > 6,
+            wellTimed = all(aCrit, bCrit, cCrit, dCrit))
+
+wt.s.dat <- wt.dat |>
+  ungroup() |>
+  group_by(subject, genotype) |>
+  filter(block == 6) |>
+  summarise(poorTimed = sum(!wellTimed,
+                            na.rm = TRUE),
+            per_poor = sum(!wellTimed,
+                           na.rm = TRUE) / length(wellTimed) * 100)
+
+poor_timed_aov <- wt.s.dat |> 
+  ungroup() |> 
+  anova_test(per_poor ~ genotype)
+
+poor_timed_pc <- wt.s.dat |> 
+  ungroup() |> 
+  pc_tests(per_poor)
+
+poor_timed_s <- wt.s.dat |> 
+  group_by(genotype) |>
+  summarise(mean_per_poor = mean(per_poor, na.rm = TRUE),
+            sd_per_poor = sd(per_poor, na.rm = TRUE))
+
+```
+
+During the final block of testing, there was no significant effect of genotype on the number of poorly timed trials (`r report_anova(poor_timed_aov)`).
+
+
+Both well timed and poorly timed trials are included in the following analysis.
+
+## Single Trial Analysis
+
+```{r single_trial}
+st.dat <- dat_PI_timing |>
+  left_join(wt.dat) |>
+  filter(second == 1) |>
+  group_by(subject, block, genotype) |>
+  mutate(outputSpread = outputStop - outputStart,
+         outputMiddle = (outputStop + outputStart) / 2) |>
+  summarise(meanStart = mean(outputStart, na.rm = TRUE),
+            meanStop = mean(outputStop, na.rm = TRUE),
+            meanSpread = mean(outputSpread, na.rm = TRUE),
+            startCV = sd(outputStart) / mean(outputStart, na.rm = TRUE),
+            stopCV = sd(outputStop) / mean(outputStop, na.rm = TRUE),
+            spreadCV = sd(outputSpread) / mean(outputSpread, na.rm = TRUE),
+            middleTime = mean(outputMiddle, na.rm = TRUE))
+
+st6_dat <- st.dat |> 
+  ungroup() |> 
+  filter(block == 6)
+
+st_start_aov <- st6_dat |> 
+  anova_test(meanStart ~ genotype)
+
+st_start_pc <- st6_dat |>
+  pc_tests(meanStart)
+
+st_stop_aov <- st6_dat |> 
+  anova_test(meanStop ~ genotype)     # *
+
+st_stop_pc <- st6_dat |>
+  pc_tests(meanStop)
+
+st_spread_aov <- st6_dat |> 
+  anova_test(meanSpread ~ genotype)
+
+st_spread_pc <- st6_dat |>
+  pc_tests(meanSpread)
+
+st_middle_aov <- st6_dat |> 
+  anova_test(middleTime ~ genotype)     # *
+
+st_middle_pc <- st6_dat |>
+  pc_tests(middleTime)
+
+st_startCV_aov <- st6_dat |> 
+  anova_test(startCV ~ genotype)    # *
+
+st_startCV_pc <- st6_dat |>
+  pc_tests(startCV)
+
+st_stopCV_aov <- st6_dat |> 
+  anova_test(stopCV ~ genotype)
+
+st_stopCV_pc <- st6_dat |>
+  pc_tests(stopCV)
+
+st_spreadCV_aov <- st6_dat |> 
+  anova_test(spreadCV ~ genotype)
+
+st_spreadCV_pc <- st6_dat |>
+  pc_tests(spreadCV)
+
+st6_dat_long <- st6_dat |>
+  pivot_longer(cols = c(meanStart, meanStop, middleTime),
+               names_to = "time_point",
+               values_to = "value")
+
+st_time_aov <- st6_dat_long |>
+  anova_test(value ~ time_point * genotype)
+
+st_time_pc <- st6_dat_long |>
+  group_by(time_point) |>
+  pc_tests(value)
+```
+
+The single trial parameters were analyzed using ANOVAs and planned comparisons (`r wt_name` vs `r tg_name` and `r tg_name` vs `r rescue_name`).
+There was an effect of genotype on stop times (`r report_anova(st_stop_aov, 1)`),
+with the `r rescue_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, rescue_name)`) having a later start time than the `r tg_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, tg_name)`; `r report_pc(st_stop_pc, c(rescue_name, tg_name))`).
+There was also an effect of genotype on middle times (`r report_anova(st_middle_aov)`),
+with the `r rescue_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, rescue_name)`) having a later middle time than the `r tg_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, tg_name)`; `r report_pc(st_middle_pc, c(rescue_name, tg_name))`).
+While there was no main effect of genotype on start times (`r report_anova(st_start_aov)`), the planned comparisons showed that the `r tg_name` mice (`r report_mean_sd(st6_dat, meanStart, genotype, tg_name)`) had a earlier start time than the `r rescue_name` mice (`r report_mean_sd(st6_dat, meanStart, genotype, rescue_name)`; `r report_pc(st_start_pc, c(tg_name, rescue_name))`).
+There was no effect of genotype on spread (`r report_anova(st_spread_aov)`; Figure \@ref(fig:st-plot)).
+
+There was an effect of genotype on the coefficient of variation of the start times (`r report_anova(st_startCV_aov)`),
+with the `r wt_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, wt_name)`) having a lower coefficients of variation than the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`; `r report_pc(st_startCV_pc, c(wt_name, tg_name))`),
+and the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`) having greater coefficients than the `r rescue_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, rescue_name)`; `r report_pc(st_startCV_pc, c(tg_name, rescue_name))`),
+but not on the stop times (`r report_anova(st_stopCV_aov)`; `r wt_name`: `r report_mean_sd(st6_dat, stopCV, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(st6_dat, stopCV, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(st6_dat, stopCV, genotype, rescue_name)`).
+
+```{r st-plot, fig.cap="\\label{fig:single_trial_plot}The comparison of single trial analysis between the Nrxn1\\textsuperscript{+/+}, Nrxn1\\textsuperscript{+/-}, and Nrxn1\\textsuperscript{ΔS5/-} mice. Bars show the range of data points out to a maximum of 1.5 interquartile ranges (\\textit{p} = .05 * .01 ** .001 *** 0)."}
+
+dot_size <- 1
+bin_width <- .5
+sig_size <- 10
+
+stStartPlot <- st6_dat |>
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = meanStart,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(st_start_pc, y_position = 35, textsize = sig_size) +
+  labs(x = "",  # specify the x and y labels
+       y = 'Start Time (s)',
+       tag = 'A') +
+  coord_cartesian(ylim = c(0, 40)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+stMiddlePlot <- st6_dat |>
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = middleTime,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(st_middle_pc, y_position = 35, textsize = sig_size) +
+  labs(x = "",  # specifiy the x and y labels
+       y = 'Middle Time (s)',
+       tag = 'B') +
+  coord_cartesian(ylim = c(0, 40)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+stStopPlot <- st6_dat |>
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = meanStop,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(st_stop_pc, y_position = 35, textsize = sig_size) +
+  labs(x = "",  # specifiy the x and y labels
+       y = 'Stop Time (s)',
+       tag = 'C') +
+  coord_cartesian(ylim = c(0, 40)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+stSpreadPlot <- st6_dat |>
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = meanSpread,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width * (8/40),
+               stroke = 2) +
+  pc_sig_markers(st_spread_pc, y_position = 22, textsize = sig_size) +
+  labs(x = "",  # specifiy the x and y labels
+       y = 'Spread (s)',
+       tag = 'D') +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+timing_st <- grid.arrange(stStartPlot, stMiddlePlot, stStopPlot,
+                          stSpreadPlot,
+                          nrow = 1)
+
+ggsave(here("figures", "timing_single_trial.tif"),
+       timing_st,
+       width = 8,
+       height = 6,
+       dpi = figure_dpi,
+       compression = "lzw")
+```
+
+```{r st_cor}
+cor.dat <- dat_PI_timing |>
+  left_join(wt.dat) |>
+  filter(second == 1,
+         block == 6) |>
+  group_by(subject, block, genotype) |>
+  mutate(outputSpread = outputStop - outputStart,
+         outputMiddle = (outputStop + outputStart) / 2)
+
+corCoef.dat <- cor.dat |>
+  summarise(startStopCor = cor(outputStart, outputStop),
+            startSpreadCor = cor(outputStart, outputSpread),
+            middleSpreadCor = cor(outputMiddle, outputSpread)) |> 
+  ungroup()
+
+# start / stop
+
+start_stop_cor <- cor.dat |> 
+  group_by(genotype) |> 
+  cor_test(outputStart, outputStop)
+
+wt_start_stop_cor <- cor.test(~ outputStart + outputStop,
+                              data = cor.dat[cor.dat$genotype == wt_name,])
+
+tg_start_stop_cor <- cor.test(~ outputStart + outputStop,
+                              data = cor.dat[cor.dat$genotype == tg_name,])
+
+rescue_start_stop_cor <- cor.test(~ outputStart + outputStop,
+                                  data = cor.dat[cor.dat$genotype == rescue_name,])
+
+cor_start_stop_aov <- corCoef.dat |> 
+  anova_test(startStopCor ~ genotype)
+
+# start / spread
+
+start_spread_cor <- cor.dat |> 
+  group_by(genotype) |> 
+  cor_test(outputStart, outputSpread)
+
+wt_start_spread_cor <- cor.test(~ outputStart + outputSpread,
+                                data = cor.dat[cor.dat$genotype == wt_name,])
+
+tg_start_spread_cor <- cor.test(~ outputStart + outputSpread,
+                                data = cor.dat[cor.dat$genotype == tg_name,])
+
+rescue_start_spread_cor <- cor.test(~ outputStart + outputSpread,
+                                    data = cor.dat[cor.dat$genotype == rescue_name,])
+
+cor_start_spread_aov <- corCoef.dat |> 
+  anova_test(startSpreadCor ~ genotype)
+
+# middle / spread
+wt_mid_spread_cor <- cor.dat |> 
+  filter(genotype == wt_name) |> 
+  ungroup() |> 
+  cor_test(outputMiddle, outputSpread)
+
+tg_mid_spread_cor <- cor.dat |> 
+  filter(genotype == tg_name) |> 
+  ungroup() |> 
+  cor_test(outputMiddle, outputSpread)
+
+rescue_mid_spread_cor <- cor.dat |> 
+  filter(genotype == rescue_name) |> 
+  ungroup() |> 
+  cor_test(outputMiddle, outputSpread)
+
+cor_middle_spread_aov <- corCoef.dat |> 
+  anova_test(middleSpreadCor ~ genotype)
+
+cor_middle_spread_pc <- corCoef.dat |> 
+  pc_tests(middleSpreadCor)
+
+```
+
+Pearson's correlations between the start and stop times, the start time and the spread, and the spread and the middle time were also examined. 
+Genotype differences in correlation coefficients were analyzed with ANOVAs.
+Start and stop time correlations (`r wt_name`: `r report_cor(start_stop_cor, 1)`; `r tg_name`: `r report_cor(start_stop_cor, 2)`; `r rescue_name`: `r report_cor(start_stop_cor, 3)`) and start time and spread correlations (`r wt_name`: `r report_cor(start_spread_cor, 1)`; `r tg_name`: `r report_cor(start_spread_cor, 2)`; `r rescue_name`: `r report_cor(start_spread_cor, 3)`) were significant for all genotypes, 
+and mice did not differ on start - stop time correlations (`r report_anova(cor_start_stop_aov)`; Figure \@ref(fig:cor-plots)A),
+nor start - spread correlations (`r report_anova(cor_start_spread_aov)`; Figure \@ref(fig:cor-plots)B).
+While the middle - spread correlations were significant for the `r wt_name` mice (`r report_cor(wt_mid_spread_cor)`) and the `r rescue_name` mice (`r report_cor(rescue_mid_spread_cor)`), 
+they were not significant for the `r tg_name` mice (`r report_cor(tg_mid_spread_cor)`),
+resulting in a significant difference in the middle - spread correlations between genotypes (`r report_anova(cor_middle_spread_aov)`), with the `r tg_name` (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, tg_name)`) mice showing lower correlations than both the `r wt_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, wt_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, wt_name))`) and the `r rescue_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, rescue_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, rescue_name))` Figure \@ref(fig:cor-plots)C).
+
+```{r cor-plots, fig.cap="\\label{fig:cor_plot}Correlations between A) the start and stop times, B) the start times and the spread, and C) the middle time and the spread.", fig.height=8}
+# start / stop
+start_stop_plot <- cor.dat |>
+  ggplot(aes(x = outputStart,
+             y = outputStop,
+             colour = genotype)) +
+  geom_jitter(alpha = .5) +
+  geom_smooth(method = 'lm',
+              linewidth = .5,
+              se = FALSE) +
+  labs(x = 'Start (s)',
+       y = 'Stop (s)',
+       colour = 'Genotype',
+       tag = "A") +
+  theme_classic() +
+  theme(legend.position = "top",
+        legend.location = "planel",
+        legend.title = element_blank(),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+        legend.text = ggtext::element_markdown()) +
+  scale_colour_manual(values = colour_vector,
+                      labels = plot_labels)
+
+# start / spread
+start_spread_plot <- cor.dat |>
+  ggplot(aes(x = outputStart,
+             y = outputSpread,
+             colour = genotype)) +
+  geom_jitter(alpha = .5) +
+  geom_smooth(method = 'lm',
+              linewidth = .5,
+              se = FALSE) +
+  labs(x = 'Start (s)',
+       y = 'Spread (s)',
+       colour = 'Genotype',
+       tag = "B") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_colour_manual(values = colour_vector)
+
+# middle / spread
+middle_spread_plot <- cor.dat |>
+  ggplot(aes(x = outputMiddle,
+             y = outputSpread,
+             colour = genotype)) +
+  geom_jitter(alpha = .5) +
+  geom_smooth(method = 'lm',
+              linewidth = .5,
+              se = FALSE) +
+  labs(x = 'Middle (s)',
+       y = 'Spread (s)',
+       colour = 'Genotype',
+       tag = "C") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_colour_manual(values = colour_vector)
+
+# all plots
+timing_corr <- grid.arrange(start_stop_plot, start_spread_plot, middle_spread_plot,
+                            nrow = 3,
+                            heights = c(1.28, 1, 1))
+
+ggsave(here("figures", "timing_corr.tif"),
+       timing_corr,
+       width = 8,
+       height = 6,
+       dpi = figure_dpi,
+       compression = "lzw")
+```
+
+## Average Response Curve Analysis
+```{r norm_parms}
+# normalize and smooth
+
+my_rolling_average <- function(data, span = 5) {
+  
+  if(span %% 2 != 1 | span < 3) {
+    stop("span must be odd value >= 3!")
+  }
+  
+  data_length = length(data)
+  
+  k = (span / 2) - .5
+  
+  data_out <- NULL
+  
+  for(i in 1:data_length) {
+    
+    if(i > k & i < (data_length - k)) {
+      data_out[i] <- mean(data[(i - k):(i + k)],
+                          na.rm = TRUE)
+    } else if(i <= k) {
+      j <- i - 1
+      data_out[i] <- mean(data[(i - j):(i + j)],
+                          na.rm = TRUE)
+    } else if(i >= (data_length - k)) {
+      h <- data_length - i
+      data_out[i] <- mean(data[(i - h):(i + h)],
+                          na.rm = TRUE)
+    }
+  }
+  return(data_out)
+}
+
+s.dat <- dat_PI_timing |>
+  left_join(wt.dat) |>
+  group_by(subject, block, second, genotype, peak_m) |>
+  # calculate mean response for each second
+  summarise(meanResp = mean(responseRate)) |>
+  group_by(subject, block, genotype) |>
+  mutate(
+    # smooth response over 5 seconds of normalized response
+    smoothedResp = my_rolling_average(meanResp, 5),
+    # normalize response
+    normResp = smoothedResp / max(smoothedResp),
+  )
+
+
+# calculate parameters
+p.dat <- s.dat |>
+  group_by(subject, genotype, block, peak_m) |>
+  summarise(
+    # check if multiple peaks
+    peakLength = length(second[normResp == 1]),
+    # see if multi peaks are consecutive
+    peakConsecutive = ifelse(peakLength == 1,
+                             TRUE,
+                             ifelse((second[normResp == 1][peakLength] - second[normResp == 1][1])
+                                    == (peakLength - 1),
+                                    TRUE,
+                                    FALSE
+                             )
+    ),
+    # use the mean of peak(s)
+    peak = mean(second[which.max(normResp)]),
+    # find last point before peak <= .7
+    last_below = max(second[normResp <= .7 &
+                              second < peak]),
+    new_start = min(second[normResp > .7]),
+    # find first time smoothed response > .7 & before peak
+    first_below50_after = second[normResp < .5 &
+                                   second > peak][1],
+    last_over70 = max(second[normResp > .7]),
+    # stop is first time after peak smoothed response drops below .7
+    stop = max(second[normResp > .7]) + 1,
+    stop = if_else(stop > 45,
+                   45,
+                   stop),
+    # width is stop minus start
+    width = stop - new_start,
+    # amplitude is maximum non normalized response
+    amplitude = max(meanResp),
+    # tail amplitude is non normalized response at 40 sec
+    # I had been using the response at the second start previously
+    amp_at_40 = meanResp[second == 40],
+    amp_at_30 = meanResp[second == 30]
+  )
+
+```
+
+```{r ARC_stats}
+
+# start
+
+arc_start_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(new_start ~ genotype)
+
+arc_start_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |>
+  pc_tests(new_start)
+
+# peak
+
+arc_peak_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(peak_m ~ genotype)
+
+arc_peak_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pc_tests(peak_m)
+
+# stop
+
+arc_stop_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(stop ~ genotype)     # * 
+
+arc_stop_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pc_tests(stop)
+
+# spread
+
+arc_spread_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(width ~ genotype)
+
+arc_spread_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pc_tests(width)
+
+# amplitude
+
+arc_amp_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(amplitude ~ genotype)
+
+arc_amp_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pc_tests(amplitude)
+
+# amp at 30 seconds
+
+arc_30amp_aov <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  anova_test(amp_at_30 ~ genotype)
+
+arc_30amp_pc <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pc_tests(amp_at_30)
+
+# anova for all time points
+p.dat_long <- p.dat |> 
+  ungroup() |> 
+  filter(block == 6) |> 
+  pivot_longer(cols = c(new_start, peak_m, stop),
+               names_to = "time_point",
+               values_to = "value") 
+
+arc_time_aov <- p.dat_long |> 
+  anova_test(dv = value,
+             wid = subject,
+             within = time_point,
+             between = genotype) |> 
+  get_anova_table()
+
+arc_time_pc <- p.dat_long |> 
+  group_by(time_point) |>
+  emmeans_test(formula = value ~ genotype,
+               comparisons = list(
+                 c(wt_name, tg_name),
+                 c(tg_name, rescue_name)),
+               p.adjust.method = "none") |>
+  mutate(across(group1:group2, fix_names))
+
+```
+The parameters calculated from the average response curves (Figure \@ref(fig:ARC-plots)A) were compared between genotypes using ANOVAs.
+There was an effect of genotype on stop times (`r report_anova(arc_stop_aov)`;  Figure \@ref(fig:ARC-plots)E),
+with planned comparisons showing the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, tg_name)`) had earlier peaks than the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, rescue_name)`; `r report_pc(arc_stop_pc, c(tg_name, rescue_name))`).
+There was also an effect of genotype on the amplitude at 30s (`r report_anova(arc_30amp_aov)`; Figure \@ref(fig:ARC-plots)G),
+with planned comparisons showing the `r wt_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, wt_name)`) had a greater amplitude at 30s than the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, tg_name)`; `r report_pc(arc_30amp_pc, c(wt_name, tg_name))`), 
+as well as the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, rescue_name)`) having a greater amplitude at 30s than the `r tg_name` mice (`r report_pc(arc_30amp_pc, c(rescue_name, tg_name))`).
+No other average response curve measures showed a significant effect of genotype (*p*'s >`r format_p(min(c(arc_start_aov$p, arc_peak_aov$p, arc_spread_aov$p, arc_amp_aov$p)))`).
+
+```{r ARC-plots, fig.cap="\\label{fig:arc_plots}Average peak response curve and the comparison of the indices calculated from the response curve. Bars range of data points out to a maximum of 1.5 interquartile ranges (\\textit{p} = .05 * .01 ** .001 *** 0).", fig.height=8}
+
+arc_plot <- s.dat |>
+  filter(block == 6) |> # select only block 6
+  ungroup() |> # remove grouping (was by subject and block)
+  group_by(genotype, second) |> # group instead by genotype and second
+  summarise(Resp = mean(normResp),
+            ci = mean_cl_normal(normResp)) |> # Calculate the mean curves
+  ggplot(aes(x = second,  # define aesthetics
+             y = Resp,
+             ymin = ci$ymin,
+             ymax = ci$ymax,
+             colour = genotype,
+             fill = genotype)) + # different colour for each genotype
+  geom_ribbon(alpha = .2,
+              colour = NA) +
+  geom_line() + # plot lines
+  geom_point() + # plot points
+  geom_vline(aes(xintercept = 15), # add a vertical line at 15 sec
+             linetype = 'dotted') +
+  labs(x = 'Time (s)',  # add laxis abels
+       y = str_wrap('Mean Normalized Response Rate', width = 20),
+       colour = 'Genotype',
+       tag = 'A') +
+  theme_classic() +
+  scale_colour_manual(name = "genotype",
+                      values = colour_vector,
+                      labels = plot_labels) +
+  scale_fill_manual(name = "genotype",
+                    values = colour_vector,
+                    labels = plot_labels) +
+  theme(legend.position = "inside",
+        legend.position.inside = c(.85, .8),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        legend.text = ggtext::element_markdown())
+
+arc_start_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = new_start,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(arc_start_pc, y_position = 45, textsize = sig_size / 2) +
+  labs(x = '',  # specifiy the x and y labels
+       y = 'Start Time (s)',
+       tag = 'C') +
+  coord_cartesian(ylim = c(0, 50)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+arc_peak_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = peak,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(arc_peak_pc, y_position = 45, textsize = sig_size / 2) +
+  labs(x = '',  # specifiy the x and y labels
+       y = 'Peak Time (s)',
+       tag = 'D') +
+  coord_cartesian(ylim = c(0, 50)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+arc_stop_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = stop,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width,
+               stroke = 2) +
+  geom_hline(aes(yintercept = 15),
+             linetype = 'dotted') +
+  pc_sig_markers(arc_stop_pc, y_position = 48, textsize = sig_size / 2) +
+  labs(x = '',  # specifiy the x and y labels
+       y = 'Stop Time (s)',
+       tag = 'E') +
+  coord_cartesian(ylim = c(0, 50)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+arc_spread_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = width,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width * (35 / 50),
+               stroke = 2) +
+  pc_sig_markers(arc_spread_pc, y_position = 45, textsize = sig_size / 2) +
+  labs(x = '',  # specifiy the x and y labels
+       y = 'Spread (s)',
+       tag = 'F') +
+  coord_cartesian(ylim = c(5, 50)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+arc_amp_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = amplitude,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width * (1.8 / 50),
+               stroke = 2) +
+  pc_sig_markers(arc_amp_pc, y_position = 2.4, textsize = sig_size / 2) +
+  labs(x = '',  # specify the x and y labels
+       y = 'Maximum Amplitude',
+       tag = 'B') +
+  coord_cartesian(ylim = c(.8, 2.6)) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels)
+
+arc_30_amp_plot <- p.dat |>
+  filter(block == 6) |> # select only block 6
+  ggplot(aes(x = genotype,  # create a ggplot and tell it the AESthetic mappings
+             y = amp_at_30,
+             fill = genotype)) +
+  geom_boxplot(outlier.shape = NA) + # tell it to create a boxplot
+  geom_dotplot(binaxis = "y",
+               stackdir = "center",
+               fill = NA,
+               dotsize = dot_size,
+               binwidth = bin_width * (1.2 / 50),
+               stroke = 2) +
+  pc_sig_markers(arc_30amp_pc, 
+                 y_position = c(1.3, 1.4), 
+                 textsize = sig_size / 2) +
+  labs(x = '',  # specifiy the x and y labels
+       y = str_wrap('Amplitude at 30s', width = 20),
+       tag = 'G') +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.text.x = ggtext::element_markdown(angle = 45,
+                                               hjust = 1),
+        axis.ticks = element_blank()) +
+  scale_fill_manual(values = colour_vector) +
+  scale_x_discrete(labels = plot_labels) +
+  scale_y_continuous(limits = c(0, 1.5),
+                     breaks = seq(0, 1.5, by = .5))
+
+# combined
+timing_arc <- grid.arrange(arc_plot, arc_amp_plot, arc_start_plot, arc_peak_plot, arc_stop_plot, arc_spread_plot, arc_30_amp_plot,
+                           nrow = 2,
+                           layout_matrix = rbind(c(1, 1, 1, 1, 2),
+                                                 c(3, 4, 5, 6, 7)))
+
+ggsave(here("figures", "timing_arc.tif"),
+       timing_arc,
+       width = 8,
+       height = 8,
+       dpi = figure_dpi,
+       compression = "lzw")
+```
+
+## Temporal Differentiation Measures
+```{r temporal}
+
+td.dat <- dat_PI_timing |>
+  left_join(wt.dat) |>
+  group_by(subject, block, genotype, session, trial) |>
+  summarise(startTime = outputStart[1] + 1,
+            stopTime = outputStop[1],
+            max_response = max(responseRate),
+            mean_response = mean(responseRate),
+            TDI = max(responseRate) / mean(responseRate),
+            RIR = mean(responseRate[second < startTime]) / mean(responseRate[second >= startTime & second < stopTime]),
+            RSR = mean(responseRate[second >= stopTime]) / mean(responseRate[second >= startTime & second < stopTime])) |>
+  group_by(subject, genotype, block) |>
+  summarise(TDI = mean(TDI, na.rm = TRUE),
+            RIR = mean(RIR, na.rm = TRUE),
+            RSR = mean(RSR, na.rm = TRUE),
+            mean_response = mean(mean_response, na.rm = TRUE)) |>
+  mutate(block = as.factor(block),
+         subject = as.factor(subject))
+
+# TDI
+aov_TDI <- td.dat |> 
+  ungroup() |> 
+  filter(block %in% 1:6) |> 
+  anova_test(TDI ~ genotype * block + Error(subject / block)) |> 
+  get_anova_table()  # block *
+
+TDI_pc <- td.dat |>
+  ungroup() |>
+  filter(block %in% 1:6) |> 
+  pc_tests(TDI)
+
+# RIR
+aov_RIR <- td.dat |> 
+  ungroup() |> 
+  filter(block %in% 1:6,
+         !is.infinite(RIR)) |> 
+  anova_test(RIR ~ genotype * block + Error(subject / block)) |> 
+  get_anova_table()
+
+# RSR
+aov_RSR <- td.dat |> 
+  ungroup() |> 
+  filter(block %in% 1:6,
+         !is.infinite(RSR)) |> 
+  anova_test(RSR ~ genotype * block + Error(subject / block)) |> 
+  get_anova_table()   # Block *
+
+RSR_pc <- td.dat |>
+  ungroup() |> 
+  filter(block %in% 1:6,
+         !is.infinite(RSR)) |>
+  pc_tests(RSR)
+
+```
+
+Temporal differentiation measures were compared with repeated measure ANOVAs.
+Greenhouse-Geisser corrections were applied to within-subject factors.
+The Temporal Discrimination Index (TDI) showed significant effects of block (`r report_anova(aov_TDI, "block")`),
+but no significant effect of genotype (`r report_anova(aov_TDI, "genotype")`),
+nor a genotype by block interaction (`r report_anova(aov_TDI, "genotype:block")`; Figure \@ref(fig:temporal-plots)A).
+The Response Initiation Ratio (RIR) showed no significant effects (*p*'s >= `r format(min(aov_RIR$p), digits = 3)`; Figure \@ref(fig:temporal-plots)B).
+The Response Suppression Ratio (RSR) showed significant effects of block (`r report_anova(aov_RSR, "block")`),
+but not genotype (`r report_anova(aov_RSR, "genotype")`),
+nor a genotype by block interaction (`r report_anova(aov_RSR, "genotype:block")`; Figure \@ref(fig:temporal-plots)C).
+
+```{r temporal-plots, fig.cap="\\label{fig:temporal_plots}Temporal differentiation measures across the six blocks of trials", fig.height=8}
+
+y_wrap_width <- 20
+
+TDIPlot <- td.dat |>
+  filter(block %in% 1:6) |>
+  ggplot(aes(x = block,
+             y = TDI,
+             colour = genotype)) +
+  stat_summary(fun.data = 'mean_cl_normal',
+               position = position_dodge(width = 0.5)) +
+  labs(x = '',
+       y = str_wrap("Temporal Discrimination Index", width = y_wrap_width),
+       tag = 'A',
+       shape = 'Genotype') +
+  theme_classic() +
+  theme(legend.position = "inside",
+        legend.direction = "horizontal",
+        legend.justification = c("center", "top"),
+        legend.position.inside = c(.5, 1),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        legend.text = ggtext::element_markdown()) +
+  scale_colour_manual(values = colour_vector,
+                      labels = plot_labels)
+
+RIRPlot <- td.dat |>
+  filter(block %in% 1:6) |>
+  ggplot(aes(x = block,
+             y = RIR,
+             colour = genotype)) +
+  stat_summary(fun.data = 'mean_cl_normal',
+               position = position_dodge(width = 0.5)) +
+  labs(x = '',
+       y = str_wrap('Response Initiation Ratio', width = y_wrap_width),
+       tag = 'B',
+       shape = 'Genotype') +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  scale_colour_manual(values = colour_vector)
+
+RSRPlot <- td.dat |>
+  filter(block %in% 1:6) |>
+  ggplot(aes(x = block,
+             y = RSR,
+             colour = genotype)) +
+  stat_summary(fun.data = 'mean_cl_normal',
+               position = position_dodge(width = 0.5)) +
+  labs(x = 'Block',
+       y = str_wrap('Response Suppression Ratio', width = y_wrap_width),
+       tag = 'C',
+       colour = 'Genotype') +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_colour_manual(values = colour_vector)
+
+timing_temporal <- grid.arrange(TDIPlot, RIRPlot, RSRPlot,
+                                nrow = 3)
+
+ggsave(here("figures", "timing_temporal.tif"),
+       timing_temporal,
+       width = 8,
+       height = 8,
+       dpi = figure_dpi,
+       compression = "lzw")
+```
+
+## Response Rate and Activity
+```{r response_rate}
+
+dat_PI_state <- readRDS(here("data", "PI_timing_poke_state.RDS")) |> 
+  filter(genotype %in% c("wt", "tg", "ds5/-"),
+         !old) |> 
+  mutate(genotype = case_when(
+    genotype == "wt" ~ wt_name,
+    genotype == "tg" ~ tg_name,
+    genotype == "ds5/-" ~ rescue_name),
+    genotype = as.factor(genotype),
+    genotype = fct_relevel(genotype, wt_name, tg_name))
+
+# nose pokes
+all_poke_dat <- dat_PI_state |>
+  filter(event == 'Hole5NP' 
+         & state == -1 
+         & time != 0  
+         & block <= 6) |>
+  mutate(pokes = -cumsum(state))
+
+sum_all_pokes <- all_poke_dat |>
+  filter(time <= 20*60*1000) |>
+  group_by(subj, session, trialState, genotype) |> 
+  summarise(all_total_pokes = max(pokes)) |>
+  filter(session > 25,
+         session <= 30) |> 
+  group_by(subj, genotype) |>
+  summarise(all_total_pokes = mean(all_total_pokes))
+
+pokes_aov <- sum_all_pokes |> 
+  ungroup() |> 
+  anova_test(all_total_pokes ~ genotype)
+
+state_nose_pokes <- all_poke_dat |>
+  filter(time <= 20*60*1000) |>
+  group_by(subj, session, trialState, genotype) |> 
+  summarise(all_total_pokes = max(pokes)) |>
+  filter(session > 25,
+         session <= 30) |> 
+  group_by(subj, genotype, trialState) |>
+  summarise(all_total_pokes = mean(all_total_pokes)) |> 
+  pivot_wider(id_cols = c(subj, genotype),
+              names_from = trialState,
+              values_from = all_total_pokes) |> 
+  mutate(stim_on = FITrial + PITrial,
+         stim_over_ITI = stim_on / ITI)
+
+stim_pokes_aov <- state_nose_pokes |> 
+  ungroup() |> 
+  anova_test(stim_on ~ genotype)
+
+ITI_pokes_aov <- state_nose_pokes |> 
+  ungroup() |> 
+  anova_test(ITI ~ genotype)
+
+stim_ITI_pokes_aov <- state_nose_pokes |> 
+  ungroup() |> 
+  anova_test(stim_over_ITI ~ genotype)
+
+# beam breaks
+beam_dat <- dat_PI_state |>
+  filter(event %in% c('ChoiceWallIR', 'TrayWallIR') 
+         & state == -1 
+         & time != 0,
+         session > 25,
+         session <= 30) |>
+  mutate('breaks' = -cumsum(state)) |>
+  filter(time <= 20*60*1000) |>
+  group_by(subj, genotype, session) |> 
+  summarise(totalBreaks = max(breaks)) |> 
+  group_by(subj, genotype) |> 
+  summarise(breaks = sum(totalBreaks))
+
+breaks_aov <- beam_dat |> 
+  ungroup() |> 
+  anova_test(breaks ~ genotype)
+
+```
+Response rates and activity were analyzed with ANOVAs.
+During the final block of testing,
+all genotypes made a similar number of total nose pokes per session (`r report_anova(pokes_aov)`).
+This was true when examining both nose pokes made while the discriminative stimulus was on (`r report_anova(stim_pokes_aov)`), 
+and during the inter trial intervals (`r report_anova(ITI_pokes_aov)`).
+The ratio of the number of nose pokes made during the discriminative stimulus to the number of nose pokes during the ITIs was also similar (`r report_anova(stim_ITI_pokes_aov)`).
+The total number of beam breaks was also similar (`r report_anova(breaks_aov)`), indicating similar levels of movement in the testing apparatus.
+
+## Non Normalized Response Curve
+
+A non normalized average response curve is provided in Figure \@ref(fig:non-normalized-ARC-plot).
+
+```{r non-normalized-ARC-plot, fig.cap="\\label{fig:non_normalized_ARC}Non normalized average response curve", fig.align='center'}
+
+arc_plot_non_normalized <- s.dat |>
+  filter(block == 6) |> # select only block 6
+  ungroup() |> # remove grouping (was by subject and block)
+  group_by(genotype, second) |> # group instead by genotype and second
+  summarise(Resp = mean(meanResp)) |> # Calculate the mean curves
+  ggplot(aes(x = second,  # define aesthetics
+             y = Resp,
+             colour = genotype)) + # different colour for each genotype
+  geom_line() + # plot lines
+  geom_point() + # plot points
+  geom_vline(aes(xintercept = 15), # add a vertical line at 15 sec
+             linetype = 'dotted') +
+  labs(x = 'Time (s)',  # add axis labels
+       y = str_wrap('Non Normalized Response Rate', width = 20),
+       colour = 'Genotype') +
+  theme_classic() +
+  scale_colour_manual(values = colour_vector,
+                      labels = plot_labels) +
+  theme(legend.position = c(.85, .8),
+        legend.title = element_blank(),
+        legend.text = ggtext::element_markdown())
+
+arc_plot_non_normalized
+
+ggsave(here("figures", "timing_nonnormalARC.tif"),
+       width = 8,
+       height = 6,
+       dpi = figure_dpi,
+       compression = "lzw")
+```
