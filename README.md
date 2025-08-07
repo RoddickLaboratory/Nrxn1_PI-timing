@@ -1,7 +1,7 @@
 # Interval Timing is altered in male Nrxn1+/- mice: A Model of Autism Spectrum Disorder
 
 Kyle M Roddick, Department of Psychology, Mount Allison University
-Elias B. Habib, Department of Epidemiology, Dalhousie University
+Elias B Habib, Department of Epidemiology, Dalhousie University
 Richard E Brown, Department of Psychology and Neuroscience, Dalhousie University
 Fuat Balcı, Department of Biological Sciences, University of Manitoba
 

@@ -1,7 +1,19 @@
-# Interval Timing is altered in male Nrxn1+/- mice: A Model of Autism Spectrum Disorder
-
+---
+bibliography: references.bib
+csl: apa.csl
+---
 
 ```{r setup_PI, include=FALSE}
+# This allows you to use the authblk Latex packages in the preamble to set up authors
+remove_author <- function(x) {
+  # identify empty author line
+  i <- grep("^\\\\author\\{\\}$", x)
+  # be sure it is the one pandoc inserts
+  if(all(length(i) != 0 & grepl('^\\\\date\\{', x[i+1]))) x <- x[-i]
+  x
+}
+options(bookdown.post.latex = remove_author)
+
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
@@ -73,6 +85,120 @@ pc_sig_markers <- function(pc_test,
   } 
 }
 ```
+
+\maketitle
+
+\tableofcontents
+
+# METHODS
+
+## Subjects
+
+Forty-eight male mice, 16 C57BL/6J (`r wt_name`), 16 `r tg_name` mice, and 16 `r rescue_name` mice, were tested at 2 to 3 months of age.
+The `r tg_name` mice are hemizygous for a 140-bp deletion that knocks out the \u03B1, \u03B2, and \u0263 isoforms of Nrxn1, while the `r rescue_name` mice, a proposed genetic rescue of the `r tg_name` mice [@luTargetedSplicingApproach2025], have the same 140-bp deletion to one copy of Nrxn1, and the remaining copy has an exclusion of splice site 5, shown to upregulate increase Nrxn1 protein levels and alleviate synaptic transmission and behavioural deficits caused by the 140-bp deletion [@luAlternativeSplicingHeparan2023; @luTargetedSplicingApproach2025].
+`r wt_name` and `r tg_name` mice were bred by mating wildtype `r wt_name` females and transgenic `r tg_name` males, while `r rescue_name` mice were bred by mating `r rescue_name` and Nrxn1ΔS5/ΔS5 mice.
+All mice were bred in-house at Dalhousie University from mice obtained from Dr. Ann Marie Craig at the University of British Columbia.
+Genotypes were determined using PCR with DNA from ear punches by Dr. Chris Sinal at Dalhousie University.
+The mice were weaned at 30 days of age and separated into same-sex groups of 2 to 4 siblings, housed in 30 cm × 18 cm × 12 cm polycarbonate cages with wire tops, and had ad lib access to food (Purina Rodent Laboratory Chow #5001) and water.
+The cages had wood chip bedding, a 5 cm diameter by 7 cm long PVC tube for enrichment, and paper strips were provided as nesting material.
+The colony room was maintained at 20 ± 2°C on a reversed 12-hour light/12-hour dark cycle, with lights off from 9:30 am to 9:30 pm.
+All testing was performed during the dark phase of the cycle.
+All procedures were approved by the Dalhousie University Committee on Laboratory Animals and were conducted in accordance with the guidelines of the Canadian Council on Animal Care (protocol #18-096).
+
+## Apparatus
+
+The apparatus and procedures were the same as those described by Gür, Fertan, Kosel et al. [-@gurSexDifferencesTiming2019a]. Testing was conducted in a mouse nine-hole box (Cambridge Cognition Ltd., England) with a lick tube attached to a peristaltic pump, house lights, and speakers (mounted on both sides of the inner walls).
+The box was placed in a sound- and light-attenuating chamber with a video camera on top, allowing the behavior of the mice to be observed without disrupting the test procedure.
+The test chamber contained a grid floor with a removable tray underneath.
+Six of nine holes (Holes 1–3, 7–9) were plugged, and the remaining three holes in the middle (Holes 4–6) were left open.
+Each of the three holes and the reinforcement tube/tray could be illuminated, and nose pokes to the open holes were detected via infrared beams.
+Computer software (Cambridge Cognition Ltd., England) was used to control the test box and record time-stamped nose pokes.
+
+## Procedure
+
+### Water restriction
+
+Two days before the first training session started, the mice were separated into individual cages, and their water intake was restricted while maintaining each animal at 85% of its ad libitum weight.
+On the first day of water deprivation, the water bottles were removed from the cages, and each mouse was given powdered rodent chow that was mixed with tap water (mash).
+The weight of the mice was maintained at the desired level by providing mash (on average, 2.5 mL) after each test.
+Subjects also received a 5% sucrose solution as a reward during testing.
+During water restriction, subjects had *ad lib* access to food in their home cages.
+
+### Peak Interval Procedure
+
+#### Magazine training
+
+Mice received one 20-minute session of magazine training per day for two consecutive days.
+At the start of the sessions 0.025 ml of 5% sucrose water was delivered via the peristaltic pump, followed by 0.02 ml every 40 s during the session [note that 0.7 ml indicated in @gurIntervalTimingDisrupted2019; @gurSexDifferencesTiming2019a, was the approximate total amount of water received during magazine training and not the amount delivered every 40 s].
+The reward tray was illuminated throughout the sessions.
+
+#### Fixed interval training
+
+Mice received one 20-minute session of fixed interval (FI) training per day for four consecutive days.
+In each trial, reinforcement (0.03 ml of 5% sucrose water) was delivered contingent upon the first nose poke into the central nose poke hole after 15 s since the onset of the discriminative stimulus (i.e., the onset of the light in the central nose poke hole).
+Trials with no response after the fixed interval were terminated after 45 s.
+Following a nose poke response, the light was extinguished and an inter-trial interval (ITI) of 20 s fixed ± a uniformly distributed random variable with a mean of 10 s commenced.
+
+#### Peak interval testing
+
+Mice received one 20-minute session of peak interval (PI) testing per day for 30 consecutive days.
+PI trials were randomly mixed with FI trials with a 1:2 ratio of PI:FI trials.
+The PI trials began with the illumination of the central nose poke hole and lasted 45 seconds.
+At the end of the PI trial, the light of the central nose poke hole was turned off, and an ITI started.
+No reinforcement was given during PI trials.
+Due to a one-day interruption in the testing of one batch of mice (5 `r tg_name` mice and 2 `r wt_name` mice), the data collected from these mice the day after the interruption were excluded from the dataset prior to data analysis.
+
+## Data Analysis
+
+Data analysis was conducted with MATLAB [version 25.1 (R2025a), @themathworksinc.MATLAB2025] and R [version 4.5.1, @rcoreteamLanguageEnvironmentStatistical2025].
+
+### Analysis of the individual trial data
+
+In individual PI trials, subjects exhibit a response pattern that differs from the smooth bell-shaped average response curves [@churchApplicationScalarTiming1994].
+In each trial, responding in the steady state occurs as a pattern composed of three stages.
+At the beginning of the trial, the response rate is low, and as the time of reinforcement availability approaches, it increases abruptly (start time).
+Since reinforcement is omitted in the PI trials, sometime after the time that the reinforcement should be available, the response rate abruptly declines (stop time).
+The period of high response rates is typically clustered around the time of reinforcement availability, indicating the period when there is a high expectancy of reinforcement delivery on that trial.
+The interval between the stop and start times is referred to as the spread, which reflects timing uncertainty.
+The average of the start and stop times reflects the targeted interval in that trial.\
+The primary aim of the individual trial analysis was to estimate the trial time at which animals shift from break to a run (start time) and the run back to a break (stop time).
+In other words, the time when the subject starts anticipating and stops anticipating the reward delivery (following its omission), respectively.
+The period before the run, the first break period prior to the subject initiating its high rate of anticipatory responding, should have lower-than-average response rates.
+The run should have higher-than-average response rates, and the second break period, following the subject terminating its high rate of anticipatory responding, should again show lower-than-average response rates.
+To detect the start and stop times, we used a variant of the algorithm presented in Church, Meck, and Gibbon [-@churchApplicationScalarTiming1994], which assumed a second start time.
+Additionally, the coefficients of variation for the start, stop, and spread times were compared.
+Comparisons between genotypes for these measures were made using the last five sessions of the trial, performed with one-way ANOVA.
+
+As recommended by Karson & Balcı [-@karsonTimingBehaviorGenetic2021], based on Gibbon & Church’s [-@gibbonRepresentationTime1990] theoretical work, the correlation coefficients between the start and stop times, the start times and the spreads, and the middle times and spreads were calculated for each mouse using the data from the last five sessions.
+Comparisons between genotypes for each of these three correlation coefficients were performed using one-way ANOVA.
+
+### Analysis of the peak response curve
+
+The average response curves in the PI procedure are nearly bell-shaped, with the peak located around the 15s delay of reinforcement availability.
+The latency of the peak (i.e., peak time) reflects the time of maximum expectancy for the reinforcement delivery (timing accuracy), the width of the response curve (i.e., spread) measures timing variability, and the amplitude of the response gradient reflects the motivation level of the subjects, independent of the timing performance [@balciIntervalTimingDopamine2014; @robertsIsolationInternalClock1981].
+For parameter estimations from the average response curve or gradient, we use a method previously applied by Balcı et al. [-@balciAcquisitionPeakResponding2009].
+The peak response curve was determined using the trials from the final five sessions.
+Initially, the average response rate data of each mouse was expressed in 1-s bins.
+The overall response rate was calculated for each mouse by taking the mean of the binned average response rates that formed the average response curve.
+The amplitude was also determined from the non-normalized average response curve as the height of the curve at its peak.
+For the estimation of the peak time and response curve width, on the other hand, each response curve was normalized by its amplitude for each subject then smoothed by a window of three bins, which replaces the average value in 1-s bin with the average of the three bins surrounding it (except for the endpoints of the data).
+The smoothing method using a moving average is applied to reduce noise in the individual response curves while preserving their shape.
+The global maximum of the normalized response curve is the peak time.
+The first point that exceeded the normalized response rate of 0.70 is determined as the start point.
+If there is a decrease below the normalized rate of 0.50 between this point and the peak time, the start point is determined after this point.
+The first point at which the normalized response rate falls below 0.70 after reaching its peak is determined as the stop point.
+The width of the response curve was determined as the difference between the average stop and start points derived from the response curve.
+Each parameter was compared between genotypes using one-way ANOVA.
+
+### Analysis of response rates during ITI and the discriminative stimulus
+
+The mean number of responses made by the mice across all sessions was compared.
+To evaluate whether the mice learned to associate the discriminative stimulus with the reinforcement, the ratio of nose pokes during the presentations of the discriminative stimulus (light) to the number of nose pokes during the ITIs was calculated.
+A higher ratio is indicative of better associative learning [e.g., @papachristosAutoshapedHeadPoking2006]; however, this measure is confounded by timing imprecision (an aspect of poor timing performance).
+Finally, the overall locomotor activity was quantified as the number of infrared beam breaks placed in front of the choice wall.
+One-way ANOVA was used to examine genotype differences in these metrics.
+
+# RESULTS
 
 ```{r load_data_PI}
 
@@ -146,7 +272,6 @@ poor_timed_s <- wt.s.dat |>
 ```
 
 During the final block of testing, there was no significant effect of genotype on the number of poorly timed trials (`r report_anova(poor_timed_aov)`).
-
 
 Both well timed and poorly timed trials are included in the following analysis.
 
@@ -227,17 +352,12 @@ st_time_pc <- st6_dat_long |>
 ```
 
 The single trial parameters were analyzed using ANOVAs and planned comparisons (`r wt_name` vs `r tg_name` and `r tg_name` vs `r rescue_name`).
-There was an effect of genotype on stop times (`r report_anova(st_stop_aov, 1)`),
-with the `r rescue_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, rescue_name)`) having a later start time than the `r tg_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, tg_name)`; `r report_pc(st_stop_pc, c(rescue_name, tg_name))`).
-There was also an effect of genotype on middle times (`r report_anova(st_middle_aov)`),
-with the `r rescue_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, rescue_name)`) having a later middle time than the `r tg_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, tg_name)`; `r report_pc(st_middle_pc, c(rescue_name, tg_name))`).
+There was an effect of genotype on stop times (`r report_anova(st_stop_aov, 1)`), with the `r rescue_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, rescue_name)`) having a later start time than the `r tg_name` mice (`r report_mean_sd(st6_dat, meanStop, genotype, tg_name)`; `r report_pc(st_stop_pc, c(rescue_name, tg_name))`).
+There was also an effect of genotype on middle times (`r report_anova(st_middle_aov)`), with the `r rescue_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, rescue_name)`) having a later middle time than the `r tg_name` mice (`r report_mean_sd(st6_dat, middleTime, genotype, tg_name)`; `r report_pc(st_middle_pc, c(rescue_name, tg_name))`).
 While there was no main effect of genotype on start times (`r report_anova(st_start_aov)`), the planned comparisons showed that the `r tg_name` mice (`r report_mean_sd(st6_dat, meanStart, genotype, tg_name)`) had a earlier start time than the `r rescue_name` mice (`r report_mean_sd(st6_dat, meanStart, genotype, rescue_name)`; `r report_pc(st_start_pc, c(tg_name, rescue_name))`).
 There was no effect of genotype on spread (`r report_anova(st_spread_aov)`; Figure \@ref(fig:st-plot)).
 
-There was an effect of genotype on the coefficient of variation of the start times (`r report_anova(st_startCV_aov)`),
-with the `r wt_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, wt_name)`) having a lower coefficients of variation than the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`; `r report_pc(st_startCV_pc, c(wt_name, tg_name))`),
-and the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`) having greater coefficients than the `r rescue_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, rescue_name)`; `r report_pc(st_startCV_pc, c(tg_name, rescue_name))`),
-but not on the stop times (`r report_anova(st_stopCV_aov)`; `r wt_name`: `r report_mean_sd(st6_dat, stopCV, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(st6_dat, stopCV, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(st6_dat, stopCV, genotype, rescue_name)`).
+There was an effect of genotype on the coefficient of variation of the start times (`r report_anova(st_startCV_aov)`), with the `r wt_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, wt_name)`) having a lower coefficients of variation than the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`; `r report_pc(st_startCV_pc, c(wt_name, tg_name))`), and the `r tg_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, tg_name)`) having greater coefficients than the `r rescue_name` mice (`r report_mean_sd(st6_dat, startCV, genotype, rescue_name)`; `r report_pc(st_startCV_pc, c(tg_name, rescue_name))`), but not on the stop times (`r report_anova(st_stopCV_aov)`; `r wt_name`: `r report_mean_sd(st6_dat, stopCV, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(st6_dat, stopCV, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(st6_dat, stopCV, genotype, rescue_name)`).
 
 ```{r st-plot, fig.cap="\\label{fig:single_trial_plot}The comparison of single trial analysis between the Nrxn1\\textsuperscript{+/+}, Nrxn1\\textsuperscript{+/-}, and Nrxn1\\textsuperscript{ΔS5/-} mice. Bars show the range of data points out to a maximum of 1.5 interquartile ranges (\\textit{p} = .05 * .01 ** .001 *** 0)."}
 
@@ -433,14 +553,10 @@ cor_middle_spread_pc <- corCoef.dat |>
 
 ```
 
-Pearson's correlations between the start and stop times, the start time and the spread, and the spread and the middle time were also examined. 
+Pearson's correlations between the start and stop times, the start time and the spread, and the spread and the middle time were also examined.
 Genotype differences in correlation coefficients were analyzed with ANOVAs.
-Start and stop time correlations (`r wt_name`: `r report_cor(start_stop_cor, 1)`; `r tg_name`: `r report_cor(start_stop_cor, 2)`; `r rescue_name`: `r report_cor(start_stop_cor, 3)`) and start time and spread correlations (`r wt_name`: `r report_cor(start_spread_cor, 1)`; `r tg_name`: `r report_cor(start_spread_cor, 2)`; `r rescue_name`: `r report_cor(start_spread_cor, 3)`) were significant for all genotypes, 
-and mice did not differ on start - stop time correlations (`r report_anova(cor_start_stop_aov)`; Figure \@ref(fig:cor-plots)A),
-nor start - spread correlations (`r report_anova(cor_start_spread_aov)`; Figure \@ref(fig:cor-plots)B).
-While the middle - spread correlations were significant for the `r wt_name` mice (`r report_cor(wt_mid_spread_cor)`) and the `r rescue_name` mice (`r report_cor(rescue_mid_spread_cor)`), 
-they were not significant for the `r tg_name` mice (`r report_cor(tg_mid_spread_cor)`),
-resulting in a significant difference in the middle - spread correlations between genotypes (`r report_anova(cor_middle_spread_aov)`), with the `r tg_name` (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, tg_name)`) mice showing lower correlations than both the `r wt_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, wt_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, wt_name))`) and the `r rescue_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, rescue_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, rescue_name))` Figure \@ref(fig:cor-plots)C).
+Start and stop time correlations (`r wt_name`: `r report_cor(start_stop_cor, 1)`; `r tg_name`: `r report_cor(start_stop_cor, 2)`; `r rescue_name`: `r report_cor(start_stop_cor, 3)`) and start time and spread correlations (`r wt_name`: `r report_cor(start_spread_cor, 1)`; `r tg_name`: `r report_cor(start_spread_cor, 2)`; `r rescue_name`: `r report_cor(start_spread_cor, 3)`) were significant for all genotypes, and mice did not differ on start - stop time correlations (`r report_anova(cor_start_stop_aov)`; Figure \@ref(fig:cor-plots)A), nor start - spread correlations (`r report_anova(cor_start_spread_aov)`; Figure \@ref(fig:cor-plots)B).
+While the middle - spread correlations were significant for the `r wt_name` mice (`r report_cor(wt_mid_spread_cor)`) and the `r rescue_name` mice (`r report_cor(rescue_mid_spread_cor)`), they were not significant for the `r tg_name` mice (`r report_cor(tg_mid_spread_cor)`), resulting in a significant difference in the middle - spread correlations between genotypes (`r report_anova(cor_middle_spread_aov)`), with the `r tg_name` (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, tg_name)`) mice showing lower correlations than both the `r wt_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, wt_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, wt_name))`) and the `r rescue_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, rescue_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, rescue_name))` Figure \@ref(fig:cor-plots)C).
 
 ```{r cor-plots, fig.cap="\\label{fig:cor_plot}Correlations between A) the start and stop times, B) the start times and the spread, and C) the middle time and the spread.", fig.height=8}
 # start / stop
@@ -513,6 +629,7 @@ ggsave(here("figures", "timing_corr.tif"),
 ```
 
 ## Average Response Curve Analysis
+
 ```{r norm_parms}
 # normalize and smooth
 
@@ -701,13 +818,11 @@ arc_time_pc <- p.dat_long |>
   mutate(across(group1:group2, fix_names))
 
 ```
+
 The parameters calculated from the average response curves (Figure \@ref(fig:ARC-plots)A) were compared between genotypes using ANOVAs.
-There was an effect of genotype on stop times (`r report_anova(arc_stop_aov)`;  Figure \@ref(fig:ARC-plots)E),
-with planned comparisons showing the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, tg_name)`) had earlier peaks than the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, rescue_name)`; `r report_pc(arc_stop_pc, c(tg_name, rescue_name))`).
-There was also an effect of genotype on the amplitude at 30s (`r report_anova(arc_30amp_aov)`; Figure \@ref(fig:ARC-plots)G),
-with planned comparisons showing the `r wt_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, wt_name)`) had a greater amplitude at 30s than the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, tg_name)`; `r report_pc(arc_30amp_pc, c(wt_name, tg_name))`), 
-as well as the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, rescue_name)`) having a greater amplitude at 30s than the `r tg_name` mice (`r report_pc(arc_30amp_pc, c(rescue_name, tg_name))`).
-No other average response curve measures showed a significant effect of genotype (*p*'s >`r format_p(min(c(arc_start_aov$p, arc_peak_aov$p, arc_spread_aov$p, arc_amp_aov$p)))`).
+There was an effect of genotype on stop times (`r report_anova(arc_stop_aov)`; Figure \@ref(fig:ARC-plots)E), with planned comparisons showing the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, tg_name)`) had earlier peaks than the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(stop, genotype, rescue_name)`; `r report_pc(arc_stop_pc, c(tg_name, rescue_name))`).
+There was also an effect of genotype on the amplitude at 30s (`r report_anova(arc_30amp_aov)`; Figure \@ref(fig:ARC-plots)G), with planned comparisons showing the `r wt_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, wt_name)`) had a greater amplitude at 30s than the `r tg_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, tg_name)`; `r report_pc(arc_30amp_pc, c(wt_name, tg_name))`), as well as the `r rescue_name` mice (`r p.dat |> filter(block == 6) |>  report_mean_sd(amp_at_30, genotype, rescue_name)`) having a greater amplitude at 30s than the `r tg_name` mice (`r report_pc(arc_30amp_pc, c(rescue_name, tg_name))`).
+No other average response curve measures showed a significant effect of genotype (*p*'s \>`r format_p(min(c(arc_start_aov$p, arc_peak_aov$p, arc_spread_aov$p, arc_amp_aov$p)))`).
 
 ```{r ARC-plots, fig.cap="\\label{fig:arc_plots}Average peak response curve and the comparison of the indices calculated from the response curve. Bars range of data points out to a maximum of 1.5 interquartile ranges (\\textit{p} = .05 * .01 ** .001 *** 0).", fig.height=8}
 
@@ -920,6 +1035,7 @@ ggsave(here("figures", "timing_arc.tif"),
 ```
 
 ## Temporal Differentiation Measures
+
 ```{r temporal}
 
 td.dat <- dat_PI_timing |>
@@ -978,13 +1094,9 @@ RSR_pc <- td.dat |>
 
 Temporal differentiation measures were compared with repeated measure ANOVAs.
 Greenhouse-Geisser corrections were applied to within-subject factors.
-The Temporal Discrimination Index (TDI) showed significant effects of block (`r report_anova(aov_TDI, "block")`),
-but no significant effect of genotype (`r report_anova(aov_TDI, "genotype")`),
-nor a genotype by block interaction (`r report_anova(aov_TDI, "genotype:block")`; Figure \@ref(fig:temporal-plots)A).
-The Response Initiation Ratio (RIR) showed no significant effects (*p*'s >= `r format(min(aov_RIR$p), digits = 3)`; Figure \@ref(fig:temporal-plots)B).
-The Response Suppression Ratio (RSR) showed significant effects of block (`r report_anova(aov_RSR, "block")`),
-but not genotype (`r report_anova(aov_RSR, "genotype")`),
-nor a genotype by block interaction (`r report_anova(aov_RSR, "genotype:block")`; Figure \@ref(fig:temporal-plots)C).
+The Temporal Discrimination Index (TDI) showed significant effects of block (`r report_anova(aov_TDI, "block")`), but no significant effect of genotype (`r report_anova(aov_TDI, "genotype")`), nor a genotype by block interaction (`r report_anova(aov_TDI, "genotype:block")`; Figure \@ref(fig:temporal-plots)A).
+The Response Initiation Ratio (RIR) showed no significant effects (*p*'s \>= `r format(min(aov_RIR$p), digits = 3)`; Figure \@ref(fig:temporal-plots)B).
+The Response Suppression Ratio (RSR) showed significant effects of block (`r report_anova(aov_RSR, "block")`), but not genotype (`r report_anova(aov_RSR, "genotype")`), nor a genotype by block interaction (`r report_anova(aov_RSR, "genotype:block")`; Figure \@ref(fig:temporal-plots)C).
 
 ```{r temporal-plots, fig.cap="\\label{fig:temporal_plots}Temporal differentiation measures across the six blocks of trials", fig.height=8}
 
@@ -1055,6 +1167,7 @@ ggsave(here("figures", "timing_temporal.tif"),
 ```
 
 ## Response Rate and Activity
+
 ```{r response_rate}
 
 dat_PI_state <- readRDS(here("data", "PI_timing_poke_state.RDS")) |> 
@@ -1133,11 +1246,10 @@ breaks_aov <- beam_dat |>
   anova_test(breaks ~ genotype)
 
 ```
+
 Response rates and activity were analyzed with ANOVAs.
-During the final block of testing,
-all genotypes made a similar number of total nose pokes per session (`r report_anova(pokes_aov)`).
-This was true when examining both nose pokes made while the discriminative stimulus was on (`r report_anova(stim_pokes_aov)`), 
-and during the inter trial intervals (`r report_anova(ITI_pokes_aov)`).
+During the final block of testing, all genotypes made a similar number of total nose pokes per session (`r report_anova(pokes_aov)`).
+This was true when examining both nose pokes made while the discriminative stimulus was on (`r report_anova(stim_pokes_aov)`), and during the inter trial intervals (`r report_anova(ITI_pokes_aov)`).
 The ratio of the number of nose pokes made during the discriminative stimulus to the number of nose pokes during the ITIs was also similar (`r report_anova(stim_ITI_pokes_aov)`).
 The total number of beam breaks was also similar (`r report_anova(breaks_aov)`), indicating similar levels of movement in the testing apparatus.
 
@@ -1177,3 +1289,5 @@ ggsave(here("figures", "timing_nonnormalARC.tif"),
        dpi = figure_dpi,
        compression = "lzw")
 ```
+
+# References

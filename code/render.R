@@ -26,7 +26,9 @@ render(
   output_format = pdf_document2(
     toc = FALSE,
     latex_engine = "xelatex",
-    includes = includes(in_header = here("code", "PI_timing_preamble.tex"))
+    includes = includes(
+      in_header = here("code", "PI_timing_preamble.tex")
+    )
   ),
   output_file = here(
     "docs",
