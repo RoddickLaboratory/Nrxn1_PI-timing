@@ -11,7 +11,7 @@ Location: Department of Psychology and Neuroscience, Dalhousie University, Halif
 
 ## Instructions:
 
-Run the `code/render.R` script to render the Rmarkdown file `PI_timing.Rmd` into a .pdf report. This will also restore the R environment and run the necessary scripts to generate the data files if they are missing.
+Run the code/render.R script to render the Rmarkdown file PI_timing.Rmd into a .pdf report. This will also restore the R environment and run the necessary scripts to generate the data files if they are missing.
 
 ## Files:
 
