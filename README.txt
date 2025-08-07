@@ -15,16 +15,17 @@ Run the code/render.R script to render the Rmarkdown file PI_timing.Rmd into a .
 
 ## Files:
 
-.git/ - Directory containing the git version control files.
 .gitignore - File listing the files and directories to ignore when using git for version control.
 .renvignore - File listing the files and directories to ignore when using the renv package for R package management.
 .Rprofile - R profile file that sets the default options for the R session.
 code/ - Directory containing code for the analysis of the data.
   Activity.R - R script with code to analyze the activity of the mice. Outputs the PI_timing_poke_state.RDS file used by the Rmarkdown file.
+  apa.csl - Citation style language file describing how the citations and bibliography should be formatted.
   getStartStop.m - MATLAB script with code to determine the start and stop times for the single trial analysis.
-  PI_timing_preamble.tex - Tex file that provides the preamble for the rendering for the header output file.
+  PI_timing_preamble.tex - Tex file that provides the preamble for the rendering of the title, authors, affiliations, the header in the output file.
   PI_timing.Rmd - Rmarkdown file containing the code for the analysis and visualization of the data, renders the output .pdf file when render.R is run.
   PIAnalysis.m - MATLAB script with code to analyze the data. Outputs the longDataNoTail.csv data file used by the Rmarkdown file. Requires the Curve Fitting Toolbox and the Signal Processing Toolbox.
+  references.bib - BibTeX file containing metadata on references cited.
   render.R - R script with code to render the Rmarkdown file into the output .pdf file. Will also restore the renv environment and run the Activity.R and PIAnalysis.m scripts if the data files they output are missing.
 data/ - Directory containing the data files.
   genotypes.csv - Data file listing the genotypes of the mice. Columns are the mouse subject number (mouse), the genotype (geno), the date of birth (dob), the date of testing (dot), the age in days at the start of testing (age), and whether the mouse is too old to include in the analysis (old).
