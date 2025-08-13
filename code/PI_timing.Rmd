@@ -1195,7 +1195,7 @@ sum_all_pokes <- all_poke_dat |>
   filter(session > 25,
          session <= 30) |> 
   group_by(subj, genotype) |>
-  summarise(all_total_pokes = mean(all_total_pokes))
+  summarise(all_total_pokes = sum(all_total_pokes))
 
 pokes_aov <- sum_all_pokes |> 
   ungroup() |> 
@@ -1208,12 +1208,13 @@ state_nose_pokes <- all_poke_dat |>
   filter(session > 25,
          session <= 30) |> 
   group_by(subj, genotype, trialState) |>
-  summarise(all_total_pokes = mean(all_total_pokes)) |> 
+  summarise(all_total_pokes = sum(all_total_pokes)) |> 
   pivot_wider(id_cols = c(subj, genotype),
               names_from = trialState,
               values_from = all_total_pokes) |> 
   mutate(stim_on = FITrial + PITrial,
-         stim_over_ITI = stim_on / ITI)
+         stim_over_ITI = stim_on / ITI,
+         total = stim_on + ITI)
 
 stim_pokes_aov <- state_nose_pokes |> 
   ungroup() |> 
@@ -1226,6 +1227,13 @@ ITI_pokes_aov <- state_nose_pokes |>
 stim_ITI_pokes_aov <- state_nose_pokes |> 
   ungroup() |> 
   anova_test(stim_over_ITI ~ genotype)
+
+pokes_summary <- state_nose_pokes |> 
+  group_by(genotype) |>
+  summarise(
+    across(c(total, stim_on, ITI, stim_over_ITI), 
+           list(mean = ~ mean(.x, na.rm = TRUE),
+                sd = ~ sd(.x, na.rm = TRUE))))
 
 # beam breaks
 beam_dat <- dat_PI_state |>
@@ -1245,13 +1253,20 @@ breaks_aov <- beam_dat |>
   ungroup() |> 
   anova_test(breaks ~ genotype)
 
+beam_summary <- beam_dat |> 
+  group_by(genotype) |>
+  summarise(
+    across(breaks, 
+           list(mean = ~ mean(.x, na.rm = TRUE),
+                sd = ~ sd(.x, na.rm = TRUE))))
+
 ```
 
 Response rates and activity were analyzed with ANOVAs.
-During the final block of testing, all genotypes made a similar number of total nose pokes per session (`r report_anova(pokes_aov)`).
-This was true when examining both nose pokes made while the discriminative stimulus was on (`r report_anova(stim_pokes_aov)`), and during the inter trial intervals (`r report_anova(ITI_pokes_aov)`).
-The ratio of the number of nose pokes made during the discriminative stimulus to the number of nose pokes during the ITIs was also similar (`r report_anova(stim_ITI_pokes_aov)`).
-The total number of beam breaks was also similar (`r report_anova(breaks_aov)`), indicating similar levels of movement in the testing apparatus.
+During the final block of testing, all genotypes made a similar number of total nose pokes per session (`r wt_name`: `r report_mean_sd(state_nose_pokes, total, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(state_nose_pokes, total, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(state_nose_pokes, total, genotype, rescue_name)`; `r report_anova(pokes_aov)`).
+This was true when examining both nose pokes made while the discriminative stimulus was on (`r wt_name`: `r report_mean_sd(state_nose_pokes, stim_on, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(state_nose_pokes, stim_on, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(state_nose_pokes, stim_on, genotype, rescue_name)`; `r report_anova(stim_pokes_aov)`), and during the inter trial intervals (`r wt_name`: `r report_mean_sd(state_nose_pokes, ITI, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(state_nose_pokes, ITI, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(state_nose_pokes, ITI, genotype, rescue_name)`; `r report_anova(ITI_pokes_aov)`).
+The ratio of the number of nose pokes made during the discriminative stimulus to the number of nose pokes during the ITIs was also similar (`r wt_name`: `r report_mean_sd(state_nose_pokes, stim_over_ITI, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(state_nose_pokes, stim_over_ITI, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(state_nose_pokes, stim_over_ITI, genotype, rescue_name)`; `r report_anova(stim_ITI_pokes_aov)`).
+The total number of beam breaks was also similar (`r wt_name`: `r report_mean_sd(beam_dat, breaks, genotype, wt_name)`; `r tg_name`: `r report_mean_sd(beam_dat, breaks, genotype, tg_name)`; `r rescue_name`: `r report_mean_sd(beam_dat, breaks, genotype, rescue_name)`; `r report_anova(breaks_aov)`), indicating similar levels of movement in the testing apparatus.
 
 ## Non Normalized Response Curve
 
