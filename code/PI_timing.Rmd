@@ -210,8 +210,7 @@ geno <- read_csv(here("data", "genotypes.csv"))
 dat_PI_timing <- dat_no_tail |>
   mutate(block = ((session - 1) %/% 5) + 1) |>
   left_join(geno,
-            by = c("subject" = "mouse")) |>
-  filter(!old)
+            by = c("subject" = "mouse"))
 
 dat_PI_timing <- dat_PI_timing |> 
   filter(genotype %in% c("wt", "tg", "ds5/-")) |> 
@@ -1175,8 +1174,7 @@ ggsave(here("figures", "timing_temporal.tif"),
 ```{r response_rate}
 
 dat_PI_state <- readRDS(here("data", "PI_timing_poke_state.RDS")) |> 
-  filter(genotype %in% c("wt", "tg", "ds5/-"),
-         !old) |> 
+  filter(genotype %in% c("wt", "tg", "ds5/-")) |> 
   mutate(genotype = case_when(
     genotype == "wt" ~ wt_name,
     genotype == "tg" ~ tg_name,
