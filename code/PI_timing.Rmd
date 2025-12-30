@@ -491,6 +491,9 @@ corCoef.dat <- cor.dat |>
   summarise(startStopCor = cor(outputStart, outputStop),
             startSpreadCor = cor(outputStart, outputSpread),
             middleSpreadCor = cor(outputMiddle, outputSpread)) |> 
+  mutate(across(ends_with("Cor"), 
+                ~ 0.5 * log((1 + .) / (1 - .)),
+                .names = "z_{.col}")) |>
   ungroup()
 
 # start / stop
@@ -509,7 +512,7 @@ rescue_start_stop_cor <- cor.test(~ outputStart + outputStop,
                                   data = cor.dat[cor.dat$genotype == rescue_name,])
 
 cor_start_stop_aov <- corCoef.dat |> 
-  anova_test(startStopCor ~ genotype)
+  anova_test(z_startStopCor ~ genotype)
 
 # start / spread
 
@@ -527,7 +530,7 @@ rescue_start_spread_cor <- cor.test(~ outputStart + outputSpread,
                                     data = cor.dat[cor.dat$genotype == rescue_name,])
 
 cor_start_spread_aov <- corCoef.dat |> 
-  anova_test(startSpreadCor ~ genotype)
+  anova_test(z_startSpreadCor ~ genotype)
 
 # middle / spread
 wt_mid_spread_cor <- cor.dat |> 
@@ -546,19 +549,20 @@ rescue_mid_spread_cor <- cor.dat |>
   cor_test(outputMiddle, outputSpread)
 
 cor_middle_spread_aov <- corCoef.dat |> 
-  anova_test(middleSpreadCor ~ genotype)
+  anova_test(z_middleSpreadCor ~ genotype)
 
 cor_middle_spread_pc <- corCoef.dat |> 
-  pc_tests(middleSpreadCor)
+  pc_tests(z_middleSpreadCor)
 
 ```
 
 Pearson's correlations between the start and stop times, the start time and the spread, and the spread and the middle time were also examined.
-Genotype differences in correlation coefficients were analyzed with ANOVAs.
+Genotype differences in correlation coefficients were analyzed by first applying Fisher's z transformations to the Pearson correlation coefficients, then examining the transformed coefficients with ANOVAs.
 Start and stop time correlations (`r wt_name`: `r report_cor(start_stop_cor, 1)`; `r tg_name`: `r report_cor(start_stop_cor, 2)`; `r rescue_name`: `r report_cor(start_stop_cor, 3)`) and start time and spread correlations (`r wt_name`: `r report_cor(start_spread_cor, 1)`; `r tg_name`: `r report_cor(start_spread_cor, 2)`; `r rescue_name`: `r report_cor(start_spread_cor, 3)`) were significant for all genotypes, and mice did not differ on start - stop time correlations (`r report_anova(cor_start_stop_aov)`; Figure \@ref(fig:cor-plots)A), nor start - spread correlations (`r report_anova(cor_start_spread_aov)`; Figure \@ref(fig:cor-plots)B).
-While the middle - spread correlations were significant for the `r wt_name` mice (`r report_cor(wt_mid_spread_cor)`) and the `r rescue_name` mice (`r report_cor(rescue_mid_spread_cor)`), they were not significant for the `r tg_name` mice (`r report_cor(tg_mid_spread_cor)`), resulting in a significant difference in the middle - spread correlations between genotypes (`r report_anova(cor_middle_spread_aov)`), with the `r tg_name` (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, tg_name)`) mice showing lower correlations than both the `r wt_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, wt_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, wt_name))`) and the `r rescue_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, rescue_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, rescue_name))` Figure \@ref(fig:cor-plots)C).
+While the middle - spread correlations were significant for the `r wt_name` mice (`r report_cor(wt_mid_spread_cor)`) and the `r rescue_name` mice (`r report_cor(rescue_mid_spread_cor)`), they were not significant for the `r tg_name` mice (`r report_cor(tg_mid_spread_cor)`), resulting in a significant difference in the middle - spread correlations between genotypes (`r report_anova(cor_middle_spread_aov)`), with the `r tg_name` (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, tg_name)`) mice showing lower correlations than both the `r wt_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, wt_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, wt_name))`) and the `r rescue_name` mice (`r report_mean_sd(corCoef.dat, middleSpreadCor, genotype, rescue_name)`; `r report_pc(cor_middle_spread_pc, c(tg_name, rescue_name))`; Figure \@ref(fig:cor-plots)C).
 
 ```{r cor-plots, fig.cap="\\label{fig:cor_plot}Correlations between A) the start and stop times, B) the start times and the spread, and C) the middle time and the spread.", fig.height=8}
+
 # start / stop
 start_stop_plot <- cor.dat |>
   ggplot(aes(x = outputStart,
