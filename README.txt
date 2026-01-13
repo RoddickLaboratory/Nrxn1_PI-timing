@@ -24,6 +24,8 @@ code/ - Directory containing code for the analysis of the data.
   Activity.R - R script with code to analyze the activity of the mice. Outputs the PI_timing_poke_state.RDS file used by the Rmarkdown file.
   apa.csl - Citation style language file describing how the citations and bibliography should be formatted.
   getStartStop.m - MATLAB script with code to determine the start and stop times for the single trial analysis.
+  NewExpWaldFittingforAutismResearchRevision.m - MATLAB script with code to fit Exponential Wald distributions to the single trial data.
+  NewWaldFittingforAutismResearchRevision.m - MATLAB script with code to fit Wald distributions to the single trial data.
   PI_timing_preamble.tex - Tex file that provides the preamble for the rendering of the title, authors, affiliations, the header in the output file.
   PI_timing.Rmd - Rmarkdown file containing the code for the analysis and visualization of the data, renders the output .pdf file when render.R is run.
   PIAnalysis.m - MATLAB script with code to analyze the data. Outputs the longDataNoTail.csv data file used by the Rmarkdown file. Requires the Curve Fitting Toolbox and the Signal Processing Toolbox.
