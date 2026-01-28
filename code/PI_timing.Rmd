@@ -150,7 +150,7 @@ Due to a one-day interruption in the testing of one batch of mice (5 `r tg_name`
 
 ## Data Analysis
 
-Data analysis was conducted with MATLAB [version 25.1 (R2025a), @themathworksinc.MATLAB2025] and R [version 4.5.1, @rcoreteamLanguageEnvironmentStatistical2025].
+Data analysis was conducted with MATLAB [version 25.1 (R2025a), @themathworksinc.MATLAB2025] and R [version 4.5.2, @rcoreteamLanguageEnvironmentStatistical2025].
 
 ### Analysis of the individual trial data
 
